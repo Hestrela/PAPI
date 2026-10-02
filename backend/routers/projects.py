@@ -7,7 +7,7 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
 @router.get("/")
 def list_projects():
     with get_connection() as conexao:
-        resultado = conexao.execute("SELECT id, titulo, descricao, url_github, url_linkedin, is_public FROM projects")
+        resultado = conexao.execute("SELECT id, titulo, descricao, url_github, is_public FROM projects")
         linhas = resultado.fetchall()
         return [dict(linha) for linha in linhas]
 
@@ -25,12 +25,12 @@ def create_project(project: ProjectCreate):
         return {"id": novo_id, **project.model_dump()}
 
 class LinkCreate(BaseModel):
-    titulo: str | None = None
-    url: str | None = None
+    titulo: str 
+    url: str
 
 @router.post("/{project_id}/links")
 def add_project_link(project_id: int, link: LinkCreate):
     with get_connection() as conexao:
-        resultado = conexao.execute("INSERT INTO project_links (titulo, url) VALUES(?,?) WHERE id = ?", link.titulo, link.url, project_id)
+        resultado = conexao.execute("INSERT INTO project_links (titulo, url, project_id) VALUES(?, ?, ?)", (link.titulo, link.url, project_id))
         novo_id = resultado.lastrowid
         return {"id": novo_id, **link.model_dump()}
