@@ -3,6 +3,12 @@ from database.connection import get_connection
 from fastapi import APIRouter
 from pydantic import BaseModel
 
+class ProjectCreate(BaseModel):
+    titulo: str
+    descricao: str | None = None
+    url_github: str | None = None
+    is_public: bool = True
+
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
 @router.get("/")
@@ -31,19 +37,32 @@ def list_projects():
 
         return list(projetos_map.values())
 
-
-class ProjectCreate(BaseModel):
-    titulo: str
-    descricao: str | None = None
-    url_github: str | None = None
-    is_public: bool = True
-
 @router.post("/")
 def create_project(project: ProjectCreate):
     with get_connection() as conexao:
         resultado = conexao.execute("INSERT INTO projects (titulo, descricao, url_github, is_public) VALUES(?, ?, ?, ?)", (project.titulo, project.descricao, project.url_github, project.is_public))
         novo_id = resultado.lastrowid
         return {"id": novo_id, **project.model_dump()}
+
+@router.put("/{project_id}")
+def edit_project(project: ProjectCreate, project_id: int):
+    with get_connection() as conexao:
+        resultado = conexao.execute("UPDATE projects SET titulo = ?, descricao = ?, url_github = ?, is_public = ? WHERE id = ?", (project.titulo, project.descricao, project.url_github, project.is_public, project_id))
+        linhas_afetadas = resultado.rowcount
+        if linhas_afetadas == 0:
+            raise HTTPException(status_code=404, detail="Projeto não encontrado")
+        else:
+            return {"id": project_id, **project.model_dump()}
+
+@router.delete("/{project_id}")
+def delete_project(project_id: int):
+    with get_connection() as conexao:
+        resultado = conexao.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+        linhas_deletadas = resultado.rowcount
+        if linhas_deletadas == 0:
+            raise HTTPException(status_code=404, detail="Projeto não encontrado")
+        else:
+            return {"message": "Projeto deletado com sucesso!"}
 
 class LinkCreate(BaseModel):
     titulo: str 
@@ -56,21 +75,6 @@ def add_project_link(project_id: int, link: LinkCreate):
         novo_id = resultado.lastrowid
         return {"id": novo_id, **link.model_dump()}
 
-"""
-@router.put("/")
-def edit_projetc(project: ProjectCreate):
-    pass
-"""
-
-@router.delete("/{project_id}")
-def delete_project(project_id: int):
-    with get_connection() as conexao:
-        resultado = conexao.execute("DELETE FROM projects WHERE id = ?", (project_id,))
-        linhas_deletadas = resultado.rowcount
-        if linhas_deletadas == 0:
-            raise HTTPException(status_code=404, detail="Projeto não encontrado")
-        else:
-            return {"message": "Projeto deletado com sucesso"}
 
 
 
